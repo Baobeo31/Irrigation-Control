@@ -5,6 +5,88 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ESP8266 Irrigation Control</title>
+  <script>
+    // Hàm chung để gửi yêu cầu đến ESP8266
+    const ipesp = "172.20.10.3";
+    const token = "remote";
+
+    function sendRequest(endpoint, params, successMessage) {
+      const url = `http://${ipesp}${endpoint}?token=${token}&${params}`;
+      fetch(url)
+        .then((response) => response.text())
+        .then((data) => {
+          alert(successMessage);
+          if (data) {
+            console.log(data); // Bạn có thể ghi dữ liệu nhận được nếu cần thiết
+          }
+        })
+        .catch((error) => {
+          alert("Error: " + error);
+        });
+    }
+
+    // -------------------- HÀM CHÍNH --------------------
+
+    // Tải trạng thái từ ESP8266
+    function loadStatus() {
+      sendRequest("/get_status", "", "Status loaded successfully.");
+    }
+
+    // Chuyển chế độ giữa Auto và Manual
+    function toggleMode() {
+      const currentMode = document.getElementById("currentMode").innerText.toLowerCase();
+      const newMode = currentMode === "auto" ? "manual" : "auto";
+      sendRequest(`/mode/${newMode}`, "", `Mode switched to ${newMode.toUpperCase()}`);
+      document.getElementById("currentMode").innerText = capitalize(newMode);
+    }
+
+    // Thiết lập lịch trình cho máy bơm
+    function setSchedule() {
+      const startHour = document.getElementById("startHour").value;
+      const startMinute = document.getElementById("startMinute").value;
+      const endHour = document.getElementById("endHour").value;
+      const endMinute = document.getElementById("endMinute").value;
+      const params = `start=${startHour}:${startMinute}&end=${endHour}:${endMinute}`;
+      sendRequest("/set_schedule", params, "Schedule updated successfully.");
+    }
+
+    // Thiết lập ngưỡng độ ẩm
+    function setThreshold() {
+      const threshold = document.getElementById("moistureThreshold").value;
+      sendRequest("/set_threshold", `value=${threshold}`, "Moisture threshold updated.");
+    }
+
+    // Bật máy bơm
+    function turnPumpOn() {
+      sendRequest("/pump/on", "", "Pump is ON");
+    }
+
+    // Tắt máy bơm
+    function turnPumpOff() {
+      sendRequest("/pump/off", "", "Pump is OFF");
+    }
+
+    // -------------------- HÀM PHỤ TRỢ --------------------
+
+    // Cập nhật giao diện người dùng với dữ liệu từ ESP8266
+    function updateUI(data) {
+      document.getElementById("currentMode").innerText = capitalize(data.currentMode);
+      document.getElementById("startHour").value = data.startHour || "";
+      document.getElementById("startMinute").value = data.startMinute || "";
+      document.getElementById("endHour").value = data.endHour || "";
+      document.getElementById("endMinute").value = data.endMinute || "";
+      document.getElementById("moistureThreshold").value = data.moistureThreshold || "";
+    }
+
+    // Viết hoa chữ cái đầu tiên
+    function capitalize(str) {
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // Gọi loadStatus() khi trang web được tải
+    window.onload = loadStatus;
+
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -77,88 +159,7 @@
     <button class="button" onclick="turnPumpOff()">Turn Pump Off</button>
   </div>
 
-<scripts>
-  // Hàm chung để gửi yêu cầu đến ESP8266
-const ipesp = "172.20.10.3";
-const token = "remote";
 
-function sendRequest(endpoint, params, successMessage) {
-  const url = `http://${ipesp}${endpoint}?token=${token}&${params}`;
-  fetch(url)
-    .then((response) => response.text())
-    .then((data) => {
-      alert(successMessage);
-      if (data) {
-        console.log(data); // Bạn có thể ghi dữ liệu nhận được nếu cần thiết
-      }
-    })
-    .catch((error) => {
-      alert("Error: " + error);
-    });
-}
-
-
-
-// Tải trạng thái từ ESP8266
-function loadStatus() {
-  sendRequest("/get_status", "", "Status loaded successfully.");
-}
-
-// Chuyển chế độ giữa Auto và Manual
-function toggleMode() {
-  const currentMode = document.getElementById("currentMode").innerText.toLowerCase();
-  const newMode = currentMode === "auto" ? "manual" : "auto";
-  sendRequest(`/mode/${newMode}`, "", `Mode switched to ${newMode.toUpperCase()}`);
-  document.getElementById("currentMode").innerText = capitalize(newMode);
-}
-
-// Thiết lập lịch trình cho máy bơm
-function setSchedule() {
-  const startHour = document.getElementById("startHour").value;
-  const startMinute = document.getElementById("startMinute").value;
-  const endHour = document.getElementById("endHour").value;
-  const endMinute = document.getElementById("endMinute").value;
-  const params = `start=${startHour}:${startMinute}&end=${endHour}:${endMinute}`;
-  sendRequest("/set_schedule", params, "Schedule updated successfully.");
-}
-
-// Thiết lập ngưỡng độ ẩm
-function setThreshold() {
-  const threshold = document.getElementById("moistureThreshold").value;
-  sendRequest("/set_threshold", `value=${threshold}`, "Moisture threshold updated.");
-}
-
-// Bật máy bơm
-function turnPumpOn() {
-  sendRequest("/pump/on", "", "Pump is ON");
-}
-
-// Tắt máy bơm
-function turnPumpOff() {
-  sendRequest("/pump/off", "", "Pump is OFF");
-}
-
-// -------------------- HÀM PHỤ TRỢ --------------------
-
-// Cập nhật giao diện người dùng với dữ liệu từ ESP8266
-function updateUI(data) {
-  document.getElementById("currentMode").innerText = capitalize(data.currentMode);
-  document.getElementById("startHour").value = data.startHour || "";
-  document.getElementById("startMinute").value = data.startMinute || "";
-  document.getElementById("endHour").value = data.endHour || "";
-  document.getElementById("endMinute").value = data.endMinute || "";
-  document.getElementById("moistureThreshold").value = data.moistureThreshold || "";
-}
-
-// Viết hoa chữ cái đầu tiên
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-// Gọi loadStatus() khi trang web được tải
-window.onload = loadStatus;
-
-</scripts>
 </body>
 
 </html>
