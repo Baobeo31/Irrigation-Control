@@ -41,12 +41,12 @@
 </head>
 
 <body>
-
   <h1>Máy bơm tự động</h1>
   <button class="button" onclick="loadStatus()">Refresh Data</button>
   <h2>Chế độ hiện tại: <span id="currentMode">Auto</span></h2>
   <button class="button" onclick="toggleMode()">Change Mode</button>
 
+  <!-- Lịch trình máy bơm -->
   <div class="input-group">
     <h3>Set Pump Schedule:</h3>
     <label for="startHour">Start Hour:</label>
@@ -62,129 +62,103 @@
     <button class="button" onclick="setSchedule()">Set Schedule</button>
   </div>
 
+  <!-- Ngưỡng độ ẩm -->
   <div class="input-group">
     <h3>Set Moisture Threshold:</h3>
-    <input type="number" id="moistureThreshold" value=min="0" max="100">
+    <input type="number" id="moistureThreshold" min="0" max="100">
     <br><br>
     <button class="button" onclick="setThreshold()">Set Threshold</button>
   </div>
 
+  <!-- Điều khiển máy bơm -->
   <div class="input-group">
     <h3>Control Pump:</h3>
     <button class="button" onclick="turnPumpOn()">Turn Pump On</button>
     <button class="button" onclick="turnPumpOff()">Turn Pump Off</button>
   </div>
 
+<scripts>
+  // Hàm chung để gửi yêu cầu đến ESP8266
+const ipesp = "192.168.1.11";
+const token = "remote";
 
-
-  <script>
-    const ip = "192.168.1.16"; // Thay thế bằng địa chỉ IP của ESP8266
-    const token = "remote";  // Token xác thực (phải trùng với authToken trong Arduino)
-
-    // Hàm gửi yêu cầu để chuyển sang chế độ tự động
-    function toggleMode() {
-      const currentMode = document.getElementById('currentMode').innerText;
-      const newMode = currentMode === "Auto" ? "manual" : "auto"; // Đổi chế độ giữa Auto và Manual
-      const url = `http://${ip}/mode/${newMode}?token=${token}`; // Thêm token vào URL
-
-      fetch(url)
-        .then(response => response.text())
-        .then(data => {
-          alert(data);
-          // Cập nhật trạng thái chế độ trên trang
-          document.getElementById('currentMode').innerText = newMode.charAt(0).toUpperCase() + newMode.slice(1);
-        })
-        .catch(error => {
-          alert('Error: ' + error);
-        });
-    }
-
-
-    // Hàm thiết lập lịch trình
-    function setSchedule() {
-      const startHour = document.getElementById('startHour').value;
-      const startMinute = document.getElementById('startMinute').value;
-      const endHour = document.getElementById('endHour').value;
-      const endMinute = document.getElementById('endMinute').value;
-
-      fetch(`http://${ip}/set_schedule?start=${startHour}:${startMinute}&end=${endHour}:${endMinute}&token=${token}`)
-        .then(response => response.text())
-        .then(data => {
-          alert("Schedule updated successfully.");
-        }).catch(error => {
-          alert("Error: " + error);
-        });
-    }
-
-    // Hàm thiết lập ngưỡng độ ẩm
-    function setThreshold() {
-      const threshold = document.getElementById('moistureThreshold').value;
-      fetch(`http://${ip}/set_threshold?value=${threshold}&token=${token}`)
-        .then(response => response.text())
-        .then(data => {
-          alert("Moisture threshold updated.");
-        }).catch(error => {
-          alert("Error: " + error);
-        });
-    }
-
-    // Hàm bật máy bơm
-    function turnPumpOn() {
-      fetch(`http://${ip}/pump/on?token=${token}`)
-        .then(response => response.text())
-        .then(data => {
-          alert("Pump is ON");
-        }).catch(error => {
-          alert("Error: " + error);
-        });
-    }
-
-    // Hàm tắt máy bơm
-    function turnPumpOff() {
-      fetch(`http://${ip}/pump/off?token=${token}`)
-        .then(response => response.text())
-        .then(data => {
-          alert("Pump is OFF");
-        }).catch(error => {
-          alert("Error: " + error);
-        });
-    }
+function sendRequest(endpoint, params, successMessage) {
+  const url = `http://${ipesp}${endpoint}?token=${token}&${params}`;
+  fetch(url)
+    .then((response) => response.text())
+    .then((data) => {
+      alert(successMessage);
+      if (data) {
+        console.log(data); // Bạn có thể ghi dữ liệu nhận được nếu cần thiết
+      }
+    })
+    .catch((error) => {
+      alert("Error: " + error);
+    });
+}
 
 
 
-  </script>
+// Tải trạng thái từ ESP8266
+function loadStatus() {
+  sendRequest("/get_status", "", "Status loaded successfully.");
+}
 
+// Chuyển chế độ giữa Auto và Manual
+function toggleMode() {
+  const currentMode = document.getElementById("currentMode").innerText.toLowerCase();
+  const newMode = currentMode === "auto" ? "manual" : "auto";
+  sendRequest(`/mode/${newMode}`, "", `Mode switched to ${newMode.toUpperCase()}`);
+  document.getElementById("currentMode").innerText = capitalize(newMode);
+}
 
-  <script>
-    //const ip = "192.168.1.16"; // Địa chỉ IP ESP8266
-    //const token = "remote"; // Token xác thực
+// Thiết lập lịch trình cho máy bơm
+function setSchedule() {
+  const startHour = document.getElementById("startHour").value;
+  const startMinute = document.getElementById("startMinute").value;
+  const endHour = document.getElementById("endHour").value;
+  const endMinute = document.getElementById("endMinute").value;
+  const params = `start=${startHour}:${startMinute}&end=${endHour}:${endMinute}`;
+  sendRequest("/set_schedule", params, "Schedule updated successfully.");
+}
 
-    // Hàm tải trạng thái từ ESP8266
-    function loadStatus() {
-      fetch(`http://${ip}/get_status?token=${token}`)
-        .then(response => response.json())
-        .then(data => {
-          // Cập nhật trạng thái chế độ
-          document.getElementById('currentMode').innerText = data.currentMode.charAt(0).toUpperCase() + data.currentMode.slice(1);
-          // Cập nhật lịch trình
-          document.getElementById('startHour').value = data.startHour;
-          // document.getElementById('startMinute').value = data.startMinute;
-          document.getElementById('endHour').value = data.endHour;
-          //document.getElementById('endMinute').value = data.endMinute;
-          // Cập nhật ngưỡng độ ẩm
-          document.getElementById('moistureThreshold').value = data.moistureThreshold;
-          // Hiển thị trạng thái máy bơm
-          alert(`Pump is currently ${data.pumpState.toUpperCase()}`);
-        })
-        .catch(error => {
-          alert('Error loading status: ' + error);
-        });
-    }
+// Thiết lập ngưỡng độ ẩm
+function setThreshold() {
+  const threshold = document.getElementById("moistureThreshold").value;
+  sendRequest("/set_threshold", `value=${threshold}`, "Moisture threshold updated.");
+}
 
-    // Gọi loadStatus() khi trang web được tải
-    window.onload = loadStatus;
-  </script>
+// Bật máy bơm
+function turnPumpOn() {
+  sendRequest("/pump/on", "", "Pump is ON");
+}
 
+// Tắt máy bơm
+function turnPumpOff() {
+  sendRequest("/pump/off", "", "Pump is OFF");
+}
+
+// -------------------- HÀM PHỤ TRỢ --------------------
+
+// Cập nhật giao diện người dùng với dữ liệu từ ESP8266
+function updateUI(data) {
+  document.getElementById("currentMode").innerText = capitalize(data.currentMode);
+  document.getElementById("startHour").value = data.startHour || "";
+  document.getElementById("startMinute").value = data.startMinute || "";
+  document.getElementById("endHour").value = data.endHour || "";
+  document.getElementById("endMinute").value = data.endMinute || "";
+  document.getElementById("moistureThreshold").value = data.moistureThreshold || "";
+}
+
+// Viết hoa chữ cái đầu tiên
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Gọi loadStatus() khi trang web được tải
+window.onload = loadStatus;
+
+</scripts>
 </body>
 
 </html>
